@@ -1,0 +1,22 @@
+<launch>
+
+  <!-- Arguments -->
+  <arg name="gopro_video" default="/home/bjoshi/gopro_cave/GX010013.MP4"/>
+  <arg name="gopro_folder" default="/home/bjoshi/gopro_cave"/>
+  <arg name="asl_dir" default="/home/bjoshi/gopro_cave"/>
+  <arg name="multiple_files" default="false"/>
+  <arg name="scale" default="0.5"/>
+  <arg name="grayscale" default="true"/>
+  <arg name="display_images" default="false"/>
+
+  <node name="gopro_to_asl" pkg="gopro_ros" type="gopro_to_asl" output="screen" required="true">
+    <param name="gopro_video" value="$(arg gopro_video)"/>
+    <param name="asl_dir" value="$(arg asl_dir)"/>
+    <param name="scale" value="$(arg scale)"/>
+    <param name="grayscale" value="$(arg grayscale)"/>
+    <param name="display_images" value="$(arg display_images)"/>
+    <param name="gopro_folder" value="$(arg gopro_folder)"/>
+    <param name="multiple_files" value="$(arg multiple_files)"/>
+  </node>
+
+</launch>
