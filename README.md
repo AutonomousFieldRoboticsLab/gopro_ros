@@ -84,6 +84,9 @@ If you have multiple files from a single session, put all videos in same folder 
 roslaunch gopro_ros gopro_to_rosbag.launch gopro_folder:=<folder_with_gopro_video_files> multiple_files:=true asl_dir:=<asl_format_dir>
 ```
 
+# TODO:
+Extraction video takes a lot of time. Implement multi-threaded.
+
 # Calibration
 
 Notes on camera-imu calibration for GoPro9 can be found at [GoPro9 Camera-IMU calibration](docs/calibration.md).
