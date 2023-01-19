@@ -61,7 +61,7 @@ GoPro splits video into smaller chunks. By splitting up the video it reduces the
 To save GoPro video with IMU measurements to rosbag:
 
 ```bash
-roslauch gopro_ros gopro_to_rosbag.launch gopro_video:=<gopro_video_file> rosbag:=<bag_file>
+roslaunch gopro_ros gopro_to_rosbag.launch gopro_video:=<gopro_video_file> rosbag:=<bag_file>
 ```
 
 If you have multiple files from a single session, put all videos in same folder you can use the following command to concatenate into a single rosbag:
@@ -75,7 +75,7 @@ roslaunch gopro_ros gopro_to_rosbag.launch gopro_folder:=<folder_with_gopro_vide
 To save GoPro video with IMU measurements in Euroc format:
 
 ```bash
-roslauch gopro_ros gopro_to_rosbag.launch gopro_video:=<gopro_video_file> asl_dir:=<asl_format_dir>
+roslaunch gopro_ros gopro_to_rosbag.launch gopro_video:=<gopro_video_file> asl_dir:=<asl_format_dir>
 ```
 
 If you have multiple files from a single session, put all videos in same folder you can use the following command extract all videos in a single folder:
