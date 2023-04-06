@@ -3,7 +3,9 @@
 //
 
 #include <ros/ros.h>
+#include <rosbag/bag.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/MagneticField.h>
 #include <std_msgs/Header.h>
 
 #include <experimental/filesystem>
@@ -74,9 +76,11 @@ int main(int argc, char* argv[]) {
   vector<uint32_t> samples;
   std::deque<AcclMeasurement> accl_queue;
   std::deque<GyroMeasurement> gyro_queue;
+  std::deque<MagMeasurement> magnetometer_queue;
 
   vector<uint64_t> image_stamps;
 
+  bool has_magnetic_field_readings = false;
   for (uint32_t i = 0; i < video_files.size(); i++) {
     image_stamps.clear();
 
@@ -85,6 +89,10 @@ int main(int argc, char* argv[]) {
     fs::path file = video_files[i];
     GoProImuExtractor imu_extractor(file.string());
     GoProVideoExtractor video_extractor(file.string(), scaling, true);
+
+    if (i == 0 && imu_extractor.getNumofSamples(STR2FOURCC("MAGN"))) {
+      has_magnetic_field_readings = true;
+    }
 
     imu_extractor.getPayloadStamps(STR2FOURCC("ACCL"), start_stamps, samples);
     ROS_INFO_STREAM("[ACCL] Payloads: " << start_stamps.size()
@@ -104,14 +112,20 @@ int main(int argc, char* argv[]) {
 
     uint64_t accl_end_stamp = 0, gyro_end_stamp = 0;
     uint64_t video_end_stamp = 0;
+    uint64_t magnetometer_end_stamp = 0;
+
     if (i < video_files.size() - 1) {
       GoProImuExtractor imu_extractor_next(video_files[i + 1].string());
       accl_end_stamp = imu_extractor_next.getPayloadStartStamp(STR2FOURCC("ACCL"), 0);
       gyro_end_stamp = imu_extractor_next.getPayloadStartStamp(STR2FOURCC("GYRO"), 0);
       video_end_stamp = imu_extractor_next.getPayloadStartStamp(STR2FOURCC("CORI"), 0);
+      if (has_magnetic_field_readings) {
+        magnetometer_end_stamp = imu_extractor_next.getPayloadStartStamp(STR2FOURCC("MAGN"), 0);
+      }
     }
 
     imu_extractor.readImuData(accl_queue, gyro_queue, accl_end_stamp, gyro_end_stamp);
+    imu_extractor.readMagnetometerData(magnetometer_queue, magnetometer_end_stamp);
 
     uint32_t gpmf_frame_count = imu_extractor.getImageCount();
     uint32_t ffmpeg_frame_count = video_extractor.getFrameCount();
@@ -182,5 +196,26 @@ int main(int argc, char* argv[]) {
 
     accl_queue.pop_front();
     gyro_queue.pop_front();
+  }
+
+  while (!magnetometer_queue.empty()) {
+    MagMeasurement mag = magnetometer_queue.front();
+    Timestamp stamp = mag.timestamp_;
+
+    uint32_t secs = stamp * 1e-9;
+    uint32_t n_secs = stamp % 1000000000;
+    ros::Time ros_time(secs, n_secs);
+    sensor_msgs::MagneticField magnetic_field_msg;
+    std_msgs::Header header;
+    header.stamp = ros_time;
+    header.frame_id = "body";
+    magnetic_field_msg.header = header;
+    magnetic_field_msg.magnetic_field.x = mag.magfield_.x();
+    magnetic_field_msg.magnetic_field.y = mag.magfield_.y();
+    magnetic_field_msg.magnetic_field.z = mag.magfield_.z();
+
+    bag.write("/gopro/magnetic_field", ros_time, magnetic_field_msg);
+
+    magnetometer_queue.pop_front();
   }
 }

@@ -70,6 +70,7 @@ public:
                    std::deque<GyroMeasurement>& gyro_data,
                    uint64_t accl_end_time = 0,
                    uint64_t gyro_end_time = 0);
+  void readMagnetometerData(std::deque<MagMeasurement>& mag_queue, uint64_t mag_end_time = 0);
 
   // GPMF_ERR getRawData(uint32_t fourcc, vector<vector<float>> &readings);
 

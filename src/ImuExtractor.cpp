@@ -126,7 +126,7 @@ void GoProImuExtractor::show_gpmf_structure() {
     while (
         nextret ==
         GPMF_ERROR_UNKNOWN_TYPE)  // or just using GPMF_Next(ms, GPMF_RECURSE_LEVELS|GPMF_TOLERANT)
-                                  // to ignore and skip unknown types
+      // to ignore and skip unknown types
       nextret = GPMF_Next(ms, GPMF_RECURSE_LEVELS);
 
   } while (GPMF_OK == nextret);
@@ -240,7 +240,7 @@ GPMF_ERR GoProImuExtractor::show_current_payload(uint32_t index) {
     while (
         nextret ==
         GPMF_ERROR_UNKNOWN_TYPE)  // or just using GPMF_Next(ms, GPMF_RECURSE_LEVELS|GPMF_TOLERANT)
-                                  // to ignore and skip unknown types
+      // to ignore and skip unknown types
       nextret = GPMF_Next(ms, GPMF_RECURSE_LEVELS);
 
   } while (GPMF_OK == nextret);
@@ -706,6 +706,10 @@ void GoProImuExtractor::readImuData(std::deque<AcclMeasurement>& accl_queue,
     GPMF_Free(ms);
   }
 
+  // If this is not the last video file, extract the last payload
+  // For the last video file, the last payload is not used
+  // Since we do not have the end time of the last payload
+
   if (accl_end_time > 0 && gyro_end_time > 0) {
     // ROS_WARN_STREAM("Writing last payload");
     uint64_t accl_time_span = accl_end_time * 1000 - current_accl_stamp;
@@ -740,6 +744,79 @@ void GoProImuExtractor::readImuData(std::deque<AcclMeasurement>& accl_queue,
       gyro_queue.push_back(GyroMeasurement(gyro_stamp, gyro));
 
       total_samples += 1;
+    }
+  }
+}
+
+void GoProImuExtractor::readMagnetometerData(std::deque<MagMeasurement>& mag_queue,
+                                             uint64_t mag_end_time) {
+  vector<vector<double>> mag_data;
+  uint64_t current_mag_stamp, prev_mag_stamp;
+
+  uint64_t total_samples = 0;
+  uint64_t seq = 0;
+
+  // This extracts measurements from payload 0 to payloads - 1
+  for (uint32_t index = 0; index < payloads; index++) {
+    GPMF_ERR ret;
+    uint32_t payload_size;
+
+    payload_size = GetPayloadSize(mp4, index);
+    payloadres = GetPayloadResource(mp4, payloadres, payload_size);
+    payload = GetPayload(mp4, payloadres, index);
+
+    if (payload == NULL) cleanup();
+    ret = GPMF_Init(ms, payload, payload_size);
+    if (ret != GPMF_OK) cleanup();
+
+    current_mag_stamp = get_stamp(STR2FOURCC("MAGN"));
+    current_mag_stamp = current_mag_stamp * 1000;  // us to ns
+
+    if (index > 0) {
+      uint64_t mag_time_span = current_mag_stamp - prev_mag_stamp;
+
+      if (mag_time_span < 0) {
+        cout << RED << "previous magnetometer timestamp should be smaller than current stamp"
+             << RESET << endl;
+        exit(1);
+      }
+
+      double mag_step_size = (double)mag_time_span / (double)mag_data.size();
+
+      for (uint32_t i = 0; i < mag_data.size(); i++) {
+        Timestamp mag_time = prev_mag_stamp + (uint64_t)((double)i * mag_step_size);
+        Timestamp mag_stamp = movie_creation_time + mag_time;
+        vector<double> mag_sample = mag_data.at(i);
+
+        // Camera pointing direction x,y,z
+        MagneticField mag;
+        mag << mag_sample.at(0), mag_sample.at(1), mag_sample.at(2);
+        mag_queue.push_back(MagMeasurement(mag_stamp, mag));
+      }
+    }
+
+    mag_data.clear();
+    get_scaled_data(STR2FOURCC("MAGN"), mag_data);
+
+    prev_mag_stamp = current_mag_stamp;
+    GPMF_Free(ms);
+  }
+
+  // If this is not the last video file, extract the last payload
+  if (mag_end_time > 0) {
+    // ROS_WARN_STREAM("Writing last payload");
+    uint64_t mag_time_span = mag_end_time * 1000 - current_mag_stamp;
+    double mag_step_size = (double)mag_time_span / (double)mag_data.size();
+
+    for (uint32_t i = 0; i < mag_data.size(); i++) {
+      Timestamp mag_time = prev_mag_stamp + (uint64_t)((double)i * mag_step_size);
+      Timestamp mag_stamp = movie_creation_time + mag_time;
+      vector<double> mag_sample = mag_data.at(i);
+
+      // Data comes in XYZ order, aligned with camera
+      MagneticField magnetic_field;
+      magnetic_field << mag_sample.at(0), mag_sample.at(1), mag_sample.at(2);
+      mag_queue.push_back(MagMeasurement(mag_stamp, magnetic_field));
     }
   }
 }
