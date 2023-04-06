@@ -109,6 +109,13 @@ int main(int argc, char* argv[]) {
                                          << " Start stamp: " << start_stamps[0]
                                          << " End stamp: " << start_stamps[samples.size() - 1]
                                          << " Total Samples: " << samples.at(samples.size() - 1));
+    if (has_magnetic_field_readings) {
+      imu_extractor.getPayloadStamps(STR2FOURCC("MAGN"), start_stamps, samples);
+      ROS_INFO_STREAM("[MAGN] Payloads: " << start_stamps.size()
+                                          << " Start stamp: " << start_stamps[0]
+                                          << " End stamp: " << start_stamps[samples.size() - 1]
+                                          << " Total Samples: " << samples.at(samples.size() - 1));
+    }
 
     uint64_t accl_end_stamp = 0, gyro_end_stamp = 0;
     uint64_t video_end_stamp = 0;

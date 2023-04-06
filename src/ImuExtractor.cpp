@@ -788,9 +788,9 @@ void GoProImuExtractor::readMagnetometerData(std::deque<MagMeasurement>& mag_que
         Timestamp mag_stamp = movie_creation_time + mag_time;
         vector<double> mag_sample = mag_data.at(i);
 
-        // Camera pointing direction x,y,z
+        // The data comes in ZXY order
         MagneticField mag;
-        mag << mag_sample.at(0), mag_sample.at(1), mag_sample.at(2);
+        mag << mag_sample.at(1), mag_sample.at(2), mag_sample.at(0);
         mag_queue.push_back(MagMeasurement(mag_stamp, mag));
       }
     }
@@ -815,7 +815,7 @@ void GoProImuExtractor::readMagnetometerData(std::deque<MagMeasurement>& mag_que
 
       // Data comes in XYZ order, aligned with camera
       MagneticField magnetic_field;
-      magnetic_field << mag_sample.at(0), mag_sample.at(1), mag_sample.at(2);
+      magnetic_field << mag_sample.at(1), mag_sample.at(2), mag_sample.at(0);
       mag_queue.push_back(MagMeasurement(mag_stamp, magnetic_field));
     }
   }
