@@ -4,6 +4,21 @@ This repository contains code for parsing GoPro telemetry metadata to obtain GoP
 
 This repository use [gpmf-parser](https://github.com/gopro/gpmf-parser)  from [GoPro](https://gopro.com) to extract metadata and timing information from GoPro cameras.
 
+## Related Paper
+If you find the code useful in your research, please cite our paper
+```
+@inproceedings{joshi_gopro_icra_2022,
+  author      = {Bharat Joshi and Marios Xanthidis and Sharmin Rahman and Ioannis Rekleitis},
+  title       = {High Definition, Inexpensive, Underwater Mapping},
+  booktitle   = {IEEE International Conference on Robotics and Automation (ICRA)},
+  year        = {2022},
+  pages       = {1113-1121},
+  doi         = {10.1109/ICRA46639.2022.9811695},
+  abbr        = {ICRA},
+  bibtex_show = {true},
+  code        = {https://github.com/AutonomousFieldRoboticsLab/gopro_ros},
+}
+```
 
 # Installation
 
@@ -83,10 +98,5 @@ If you have multiple files from a single session, put all videos in same folder 
 ```bash
 roslaunch gopro_ros gopro_to_rosbag.launch gopro_folder:=<folder_with_gopro_video_files> multiple_files:=true asl_dir:=<asl_format_dir>
 ```
-
 # TODO:
 Extraction video takes a lot of time. Implement multi-threaded.
-
-# Calibration
-
-Notes on camera-imu calibration for GoPro9 can be found at [GoPro9 Camera-IMU calibration](docs/calibration.md).
