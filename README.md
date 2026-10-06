@@ -1,7 +1,7 @@
 # GoProROS
 
-[![ROS 1 Workflow](https://github.com/AutonomousFieldRoboticsLab/gopro_ros/actions/workflows/build_ros1.yml/badge.svg)](https://github.com/AutonomousFieldRoboticsLab/gopro_ros2/actions/workflows/build_ros1.yml)
-[![ROS 2 Workflow](https://github.com/AutonomousFieldRoboticsLab/gopro_ros/actions/workflows/build_ros2.yml/badge.svg)](https://github.com/AutonomousFieldRoboticsLab/gopro_ros2/actions/workflows/build_ros2.yml)
+[![ROS 1 Workflow](https://github.com/AutonomousFieldRoboticsLab/gopro_ros/actions/workflows/build_ros1.yml/badge.svg)](https://github.com/AutonomousFieldRoboticsLab/gopro_ros/actions/workflows/build_ros1.yml)
+[![ROS 2 Workflow](https://github.com/AutonomousFieldRoboticsLab/gopro_ros/actions/workflows/build_ros2.yml/badge.svg)](https://github.com/AutonomousFieldRoboticsLab/gopro_ros/actions/workflows/build_ros2.yml)
 
 Extract time-synchronized images and IMU measurements from GoPro videos and save them as a
 **ROS 1 bag**, a **ROS 2 bag** (MCAP or SQLite3), or in the
