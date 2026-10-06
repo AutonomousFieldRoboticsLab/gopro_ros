@@ -1,20 +1,48 @@
-<package format="2">
-    <name>gopro_ros</name>
-    <version>0.0.1</version>
-    <description> GoPro Video information extractor. </description>
-    <maintainer email="bjoshi@email.sc.edu">Bharat Joshi</maintainer>
-    <license>BSD</license>
-    <author email="bjoshi@email.sc.edu">Bharat Joshi</author>
+<?xml version="1.0"?>
+<package format="3">
 
-    <buildtool_depend>catkin</buildtool_depend>
-    
-    <depend>cv_bridge</depend>
-    <depend>geometry_msgs</depend>
-    <depend>rosbag</depend>
-    <depend>roscpp</depend>
-    <depend>sensor_msgs</depend>
-    <depend>std_msgs</depend>
+  <!-- Package information -->
+  <name>gopro_ros</name>
+  <version>1.0.0</version>
+  <description>GoPro video information extractor and save to ROS 1 / ROS 2 bag.</description>
 
-    <exec_depend>rospy</exec_depend>
+  <maintainer email="michalis@udel.edu">Michalis Chatzispyrou</maintainer>
+  <maintainer email="alexguo@udel.edu">Jinyuan Guo</maintainer>
+  <author email="bjoshi@email.sc.edu">Bharat Joshi</author>
+  <license>BSD</license>
 
+  <!-- ROS 1: dependencies needed to compile this package -->
+  <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
+  <depend condition="$ROS_VERSION == 1">roscpp</depend>
+  <depend condition="$ROS_VERSION == 1">rosbag</depend>
+  <depend condition="$ROS_VERSION == 1">std_msgs</depend>
+  <depend condition="$ROS_VERSION == 1">sensor_msgs</depend>
+  <depend condition="$ROS_VERSION == 1">geometry_msgs</depend>
+  <depend condition="$ROS_VERSION == 1">cv_bridge</depend>
+  <exec_depend condition="$ROS_VERSION == 1">roslaunch</exec_depend>
+
+  <!-- ROS 2: dependencies needed to compile this package -->
+  <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
+  <depend condition="$ROS_VERSION == 2">rclcpp</depend>
+  <depend condition="$ROS_VERSION == 2">std_msgs</depend>
+  <depend condition="$ROS_VERSION == 2">sensor_msgs</depend>
+  <depend condition="$ROS_VERSION == 2">geometry_msgs</depend>
+  <depend condition="$ROS_VERSION == 2">cv_bridge</depend>
+  <depend condition="$ROS_VERSION == 2">rosbag2_cpp</depend>
+  <depend condition="$ROS_VERSION == 2">rosbag2_storage_default_plugins</depend>
+  <!-- On Humble the MCAP storage plugin is not part of the default plugins -->
+  <exec_depend condition="$ROS_DISTRO == humble">rosbag2_storage_mcap</exec_depend>
+  <exec_depend condition="$ROS_VERSION == 2">ros2launch</exec_depend>
+  <exec_depend condition="$ROS_VERSION == 2">launch_ros</exec_depend>
+
+  <!-- System dependencies for both versions -->
+  <depend>eigen</depend>
+  <depend>libopencv-dev</depend>
+  <!-- Resolves to ffmpeg plus the libavcodec/libavformat/libavutil/libswscale headers -->
+  <depend>ffmpeg</depend>
+
+  <export>
+    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
+    <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
+  </export>
 </package>

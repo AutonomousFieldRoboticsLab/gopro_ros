@@ -1,0 +1,56 @@
+# gopro_ros: one service per supported ROS distro.
+#
+# Build an image:
+#   docker compose build gopro_ros_jazzy   # or gopro_ros_noetic, gopro_ros_humble (none: build all)
+#
+# Convert a video (DATA_DIR is mounted at /gopro_ws/data, defaults to ./data):
+#   DATA_DIR=/path/to/videos docker compose run --rm gopro_ros_jazzy \
+#     ros2 launch gopro_ros gopro_to_rosbag.launch.py \
+#       gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
+#
+#   DATA_DIR=/path/to/videos docker compose run --rm gopro_ros_noetic \
+#     roslaunch gopro_ros gopro_to_rosbag.launch \
+#       gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run.bag
+#
+# Interactive shell:
+#   docker compose run --rm gopro_ros_jazzy
+#
+# For display_images:=true, allow X11 access on the host first: xhost +local:docker
+
+name: gopro_ros
+
+x-gopro-common: &gopro-common
+  network_mode: host
+  stdin_open: true
+  tty: true
+  environment:
+    - DISPLAY=${DISPLAY:-}
+    - QT_X11_NO_MITSHM=1
+  volumes:
+    # Input videos and output bags / EuRoC folders
+    - ${DATA_DIR:-./data}:/gopro_ws/data
+    # X11 socket, only needed for display_images:=true
+    - /tmp/.X11-unix:/tmp/.X11-unix:rw
+  working_dir: /gopro_ws
+
+services:
+  gopro_ros_noetic:
+    <<: *gopro-common
+    build:
+      context: .
+      dockerfile: docker/Dockerfile_ros1_20_04
+    image: gopro_ros:noetic
+
+  gopro_ros_humble:
+    <<: *gopro-common
+    build:
+      context: .
+      dockerfile: docker/Dockerfile_ros2_22_04
+    image: gopro_ros:humble
+
+  gopro_ros_jazzy:
+    <<: *gopro-common
+    build:
+      context: .
+      dockerfile: docker/Dockerfile_ros2_24_04
+    image: gopro_ros:jazzy
