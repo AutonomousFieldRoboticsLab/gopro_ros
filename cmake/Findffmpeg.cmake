@@ -1,4 +1,4 @@
-# Find the FFmpeg libraries used by gopro_ros2 through pkg-config.
+# Find the FFmpeg libraries used by gopro_ros through pkg-config.
 #
 # Sets:
 #   FFMPEG_FOUND

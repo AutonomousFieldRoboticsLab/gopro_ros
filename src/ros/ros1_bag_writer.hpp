@@ -2,13 +2,14 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <opencv2/core.hpp>
 #include <rosbag/bag.h>
 
 #include "utils/measurements.hpp"
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 /**
  * @brief Writes GoPro images, IMU and magnetometer measurements into a ROS 1 bag.
@@ -21,12 +22,17 @@ public:
   explicit ROS1BagWriter(const std::string& bag_path);
   ~ROS1BagWriter();
 
-  /// Writes a BGR8 or MONO8 image, optionally JPEG-compressed to `<topic>/compressed`.
+  /// Writes a raw BGR8 or MONO8 image.
   void writeImage(const std::string& topic,
                   const cv::Mat& image,
                   uint64_t stamp_ns,
-                  bool compress,
                   const std::string& frame_id = "gopro");
+
+  /// Writes an already JPEG-encoded image to `<topic>/compressed`.
+  void writeCompressedImage(const std::string& topic,
+                            const std::vector<uint8_t>& jpeg,
+                            uint64_t stamp_ns,
+                            const std::string& frame_id = "gopro");
 
   void writeImu(const std::string& topic,
                 const AcclMeasurement& accl,
@@ -42,4 +48,4 @@ private:
   rosbag::Bag bag_;
 };
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

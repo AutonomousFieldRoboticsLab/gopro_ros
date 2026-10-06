@@ -4,11 +4,12 @@
 
 #include <cv_bridge/cv_bridge.h>
 #include <ros/time.h>
+#include <sensor_msgs/CompressedImage.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
 #include <std_msgs/Header.h>
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 namespace {
 
@@ -30,20 +31,27 @@ ROS1BagWriter::~ROS1BagWriter() { bag_.close(); }
 void ROS1BagWriter::writeImage(const std::string& topic,
                                const cv::Mat& image,
                                uint64_t stamp_ns,
-                               bool compress,
                                const std::string& frame_id) {
   std_msgs::Header header;
   header.stamp = toRosTime(stamp_ns);
   header.frame_id = frame_id;
   const std::string encoding = image.channels() == 1 ? "mono8" : "bgr8";
 
-  if (compress) {
-    auto img_msg = cv_bridge::CvImage(header, encoding, image).toCompressedImageMsg();
-    bag_.write(topic + "/compressed", header.stamp, *img_msg);
-  } else {
-    auto img_msg = cv_bridge::CvImage(header, encoding, image).toImageMsg();
-    bag_.write(topic, header.stamp, *img_msg);
-  }
+  auto img_msg = cv_bridge::CvImage(header, encoding, image).toImageMsg();
+  bag_.write(topic, header.stamp, *img_msg);
+}
+
+void ROS1BagWriter::writeCompressedImage(const std::string& topic,
+                                         const std::vector<uint8_t>& jpeg,
+                                         uint64_t stamp_ns,
+                                         const std::string& frame_id) {
+  sensor_msgs::CompressedImage img_msg;
+  img_msg.header.stamp = toRosTime(stamp_ns);
+  img_msg.header.frame_id = frame_id;
+  img_msg.format = "jpg";  // same as cv_bridge::CvImage::toCompressedImageMsg()
+  img_msg.data = jpeg;
+
+  bag_.write(topic + "/compressed", img_msg.header.stamp, img_msg);
 }
 
 void ROS1BagWriter::writeImu(const std::string& topic,
@@ -77,4 +85,4 @@ void ROS1BagWriter::writeMagneticField(const std::string& topic,
   bag_.write(topic, mag_msg.header.stamp, mag_msg);
 }
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

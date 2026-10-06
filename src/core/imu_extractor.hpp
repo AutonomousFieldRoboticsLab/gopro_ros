@@ -15,7 +15,7 @@
 
 #include "utils/measurements.hpp"
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 class GoProImuExtractor {
 public:
@@ -65,4 +65,4 @@ private:
   uint64_t movie_creation_time_;
 };
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

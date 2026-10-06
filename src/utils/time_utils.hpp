@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <string>
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 /**
  * @brief Parse an ISO 8601 date string (e.g. "2020-10-29T12:00:00Z") into nanoseconds since epoch.
@@ -21,4 +21,4 @@ std::string uint64ToString(uint64_t value);
  */
 uint64_t getOffset1904();
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

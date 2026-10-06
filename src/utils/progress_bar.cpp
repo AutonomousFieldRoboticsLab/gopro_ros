@@ -4,16 +4,32 @@
 
 #include "utils/progress_bar.hpp"
 
+#include <unistd.h>
+
+#include <cstdio>
 #include <iomanip>
+#include <iostream>
 #include <utility>
 
-namespace gopro_ros2 {
+namespace gopro_ros {
+
+namespace {
+
+/// Whether the stream is a standard stream connected to a terminal.
+bool isTerminal(const std::ostream& os) {
+  if (&os == &std::cout) return isatty(fileno(stdout));
+  if (&os == &std::cerr || &os == &std::clog) return isatty(fileno(stderr));
+  return false;
+}
+
+}  // namespace
 
 ProgressBar::ProgressBar(std::ostream& os,
                          std::size_t line_width,
                          std::string message,
                          const char symbol)
     : os_{os},
+      interactive_{isTerminal(os)},
       bar_width_{line_width - kOverhead},
       message_{std::move(message)},
       full_bar_{std::string(bar_width_, symbol) + std::string(bar_width_, ' ')} {
@@ -28,7 +44,7 @@ ProgressBar::ProgressBar(std::ostream& os,
 
 ProgressBar::~ProgressBar() {
   write(1.0);
-  os_ << '\n';
+  if (interactive_) os_ << '\n';
 }
 
 void ProgressBar::write(double fraction) {
@@ -38,6 +54,14 @@ void ProgressBar::write(double fraction) {
   else if (fraction > 1)
     fraction = 1;
 
+  if (!interactive_) {
+    const int percent = static_cast<int>(100 * fraction) / 5 * 5;
+    if (percent == last_printed_percent_) return;
+    last_printed_percent_ = percent;
+    os_ << message_ << std::setw(3) << percent << "%" << std::endl;
+    return;
+  }
+
   auto width = bar_width_ - message_.size();
   auto offset = bar_width_ - static_cast<unsigned>(width * fraction);
 
@@ -46,4 +70,4 @@ void ProgressBar::write(double fraction) {
   os_ << " [" << std::setw(3) << static_cast<int>(100 * fraction) << "%] " << std::flush;
 }
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

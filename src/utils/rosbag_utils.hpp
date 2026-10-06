@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 struct BagConfig {
   std::string uri;
@@ -26,4 +26,4 @@ struct BagConfig {
  */
 BagConfig inferBagConfig(const std::string& bag_path, const std::string& storage_id = ".db3");
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

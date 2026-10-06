@@ -2,7 +2,7 @@
 <package format="3">
 
   <!-- Package information -->
-  <name>gopro_ros2</name>
+  <name>gopro_ros</name>
   <version>1.0.0</version>
   <description>GoPro video information extractor and save to ROS 1 / ROS 2 bag.</description>
 

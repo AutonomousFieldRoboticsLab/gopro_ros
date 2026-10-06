@@ -28,11 +28,11 @@
 
 namespace fs = std::filesystem;
 
-using gopro_ros2::AcclMeasurement;
-using gopro_ros2::GoProImuExtractor;
-using gopro_ros2::GoProVideoExtractor;
-using gopro_ros2::GyroMeasurement;
-using gopro_ros2::Timestamp;
+using gopro_ros::AcclMeasurement;
+using gopro_ros::GoProImuExtractor;
+using gopro_ros::GoProVideoExtractor;
+using gopro_ros::GyroMeasurement;
+using gopro_ros::Timestamp;
 
 namespace {
 
@@ -41,6 +41,14 @@ void shutdown() {
   ros::shutdown();
 #elif ROS_AVAILABLE == 2
   rclcpp::shutdown();
+#endif
+}
+
+bool rosOk() {
+#if ROS_AVAILABLE == 1
+  return ros::ok();
+#elif ROS_AVAILABLE == 2
+  return rclcpp::ok();
 #endif
 }
 
@@ -62,6 +70,7 @@ int main(int argc, char* argv[]) {
   bool grayscale;
   bool display_images;
   bool multiple_files;
+  bool hardware_decoding;
 
 #if ROS_AVAILABLE == 1
   ros::init(argc, argv, "gopro_to_asl");
@@ -73,6 +82,7 @@ int main(int argc, char* argv[]) {
   nh.param<bool>("grayscale", grayscale, false);
   nh.param<bool>("display_images", display_images, false);
   nh.param<bool>("multiple_files", multiple_files, false);
+  nh.param<bool>("hardware_decoding", hardware_decoding, true);
 #elif ROS_AVAILABLE == 2
   rclcpp::init(argc, argv);
   auto node = std::make_shared<rclcpp::Node>("gopro_to_asl");
@@ -83,6 +93,7 @@ int main(int argc, char* argv[]) {
   grayscale = node->declare_parameter<bool>("grayscale", false);
   display_images = node->declare_parameter<bool>("display_images", false);
   multiple_files = node->declare_parameter<bool>("multiple_files", false);
+  hardware_decoding = node->declare_parameter<bool>("hardware_decoding", true);
 #endif
 
   bool is_gopro_video = !gopro_video.empty();
@@ -150,13 +161,14 @@ int main(int argc, char* argv[]) {
   std::deque<GyroMeasurement> gyro_queue;
 
   for (uint32_t i = 0; i < video_files.size(); i++) {
+    if (!rosOk()) break;  // Ctrl+C: skip the remaining chapters
     image_stamps.clear();
 
     PRINT_WARNING("Opening Video File: " << video_files[i].filename().string());
 
     fs::path file = video_files[i];
     GoProImuExtractor imu_extractor(file.string());
-    GoProVideoExtractor video_extractor(file.string(), scaling);
+    GoProVideoExtractor video_extractor(file.string(), scaling, false, hardware_decoding);
 
     imu_extractor.getPayloadStamps(STR2FOURCC("ACCL"), start_stamps, samples);
     printPayloadStamps("ACCL", start_stamps, samples);
@@ -180,7 +192,6 @@ int main(int argc, char* argv[]) {
     uint32_t ffmpeg_frame_count = video_extractor.getFrameCount();
     if (gpmf_frame_count != ffmpeg_frame_count) {
       PRINT_ERROR("Video and metadata frame count do not match");
-      shutdown();
     }
 
     uint64_t gpmf_video_time = imu_extractor.getVideoCreationTime();
@@ -188,17 +199,21 @@ int main(int argc, char* argv[]) {
 
     if (ffmpeg_video_time != gpmf_video_time) {
       PRINT_ERROR("Video creation time does not match");
-      shutdown();
     }
 
     imu_extractor.getImageStamps(image_stamps, video_end_stamp);
     if (i != video_files.size() - 1 && image_stamps.size() != ffmpeg_frame_count) {
       PRINT_ERROR("ffmpeg and gpmf frame count does not match. " << image_stamps.size() << " vs "
                                                                  << ffmpeg_frame_count);
-      shutdown();
     }
 
-    video_extractor.extractFrames(image_folder, image_stamps, grayscale, display_images);
+    video_extractor.extractFrames(image_folder, image_stamps, grayscale, display_images, rosOk);
+  }
+
+  // Ctrl+C: stop without writing the remaining data
+  if (!rosOk()) {
+    PRINT_WARNING("Interrupted");
+    return 0;
   }
 
   PRINT_INFO("[ACCL] Payloads: " << accl_queue.size());
@@ -224,7 +239,7 @@ int main(int argc, char* argv[]) {
     } else {
       stamp = accl.timestamp;
     }
-    imu_stream << gopro_ros2::uint64ToString(stamp);
+    imu_stream << gopro_ros::uint64ToString(stamp);
 
     imu_stream << "," << gyro.data.x();
     imu_stream << "," << gyro.data.y();

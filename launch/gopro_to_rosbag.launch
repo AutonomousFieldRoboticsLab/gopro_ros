@@ -8,14 +8,16 @@
   <arg name="compressed_image_format" default="true"/>
   <arg name="grayscale" default="false"/>
   <arg name="display_images" default="false"/>
+  <arg name="hardware_decoding" default="true"/>
 
-  <node pkg="gopro_ros2" type="gopro_to_rosbag" name="gopro_to_rosbag" output="screen" required="true">
+  <node pkg="gopro_ros" type="gopro_to_rosbag" name="gopro_to_rosbag" output="screen" required="true">
     <param name="gopro_video" value="$(arg gopro_video)"/>
     <param name="rosbag" value="$(arg rosbag)"/>
     <param name="scale" value="$(arg scale)"/>
     <param name="compressed_image_format" value="$(arg compressed_image_format)"/>
     <param name="grayscale" value="$(arg grayscale)"/>
     <param name="display_images" value="$(arg display_images)"/>
+    <param name="hardware_decoding" value="$(arg hardware_decoding)"/>
     <param name="gopro_folder" value="$(arg gopro_folder)"/>
     <param name="multiple_files" value="$(arg multiple_files)"/>
   </node>

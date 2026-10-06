@@ -33,7 +33,7 @@
 
 extern void PrintGPMF(GPMF_stream* ms);
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 namespace {
 
@@ -671,4 +671,4 @@ void GoProImuExtractor::readMagnetometerData(std::deque<MagMeasurement>& mag_que
   }
 }
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

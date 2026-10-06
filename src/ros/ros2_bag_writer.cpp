@@ -19,7 +19,7 @@
 #include "utils/print.hpp"
 #include "utils/rosbag_utils.hpp"
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 namespace {
 
@@ -65,24 +65,34 @@ ROS2BagWriter::ROS2BagWriter(const std::string& bag_path,
 void ROS2BagWriter::writeImage(const std::string& topic,
                                const cv::Mat& image,
                                uint64_t stamp_ns,
-                               bool compress,
                                const std::string& frame_id) {
   std_msgs::msg::Header header;
   header.stamp = toRosTime(stamp_ns);
   header.frame_id = frame_id;
   const std::string encoding = image.channels() == 1 ? "mono8" : "bgr8";
-  const rclcpp::Time time(header.stamp);
+
+  auto img_msg = cv_bridge::CvImage(header, encoding, image).toImageMsg();
+  auto serialized_msg = std::make_shared<rclcpp::SerializedMessage>();
+  image_serializer_.serialize_message(img_msg.get(), serialized_msg.get());
+  bag_.write(serialized_msg, topic, "sensor_msgs/msg/Image", rclcpp::Time(header.stamp));
+}
+
+void ROS2BagWriter::writeCompressedImage(const std::string& topic,
+                                         const std::vector<uint8_t>& jpeg,
+                                         uint64_t stamp_ns,
+                                         const std::string& frame_id) {
+  sensor_msgs::msg::CompressedImage img_msg;
+  img_msg.header.stamp = toRosTime(stamp_ns);
+  img_msg.header.frame_id = frame_id;
+  img_msg.format = "jpg";  // same as cv_bridge::CvImage::toCompressedImageMsg()
+  img_msg.data = jpeg;
 
   auto serialized_msg = std::make_shared<rclcpp::SerializedMessage>();
-  if (compress) {
-    auto img_msg = cv_bridge::CvImage(header, encoding, image).toCompressedImageMsg();
-    compressed_image_serializer_.serialize_message(img_msg.get(), serialized_msg.get());
-    bag_.write(serialized_msg, topic + "/compressed", "sensor_msgs/msg/CompressedImage", time);
-  } else {
-    auto img_msg = cv_bridge::CvImage(header, encoding, image).toImageMsg();
-    image_serializer_.serialize_message(img_msg.get(), serialized_msg.get());
-    bag_.write(serialized_msg, topic, "sensor_msgs/msg/Image", time);
-  }
+  compressed_image_serializer_.serialize_message(&img_msg, serialized_msg.get());
+  bag_.write(serialized_msg,
+             topic + "/compressed",
+             "sensor_msgs/msg/CompressedImage",
+             rclcpp::Time(img_msg.header.stamp));
 }
 
 void ROS2BagWriter::writeImu(const std::string& topic,
@@ -121,4 +131,4 @@ void ROS2BagWriter::writeMagneticField(const std::string& topic,
       serialized_msg, topic, "sensor_msgs/msg/MagneticField", rclcpp::Time(mag_msg.header.stamp));
 }
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

@@ -1,4 +1,7 @@
-# gopro_ros2
+# GoProROS
+
+[![ROS 1 Workflow](https://github.com/AutonomousFieldRoboticsLab/gopro_ros2/actions/workflows/build_ros1.yml/badge.svg)](https://github.com/AutonomousFieldRoboticsLab/gopro_ros2/actions/workflows/build_ros1.yml)
+[![ROS 2 Workflow](https://github.com/AutonomousFieldRoboticsLab/gopro_ros2/actions/workflows/build_ros2.yml/badge.svg)](https://github.com/AutonomousFieldRoboticsLab/gopro_ros2/actions/workflows/build_ros2.yml)
 
 Extract time-synchronized images and IMU measurements from GoPro videos and save them as a
 **ROS 1 bag**, a **ROS 2 bag** (MCAP or SQLite3), or in the
@@ -19,6 +22,19 @@ the same clock.
 
 The same package builds for both ROS versions: CMake detects whether catkin or ament is sourced and
 builds the matching executables (the approach used by [OpenVINS](https://github.com/rpng/open_vins)).
+
+## Performance
+
+Video frames are decoded on the GPU when available (NVIDIA NVDEC or VAAPI, with automatic fallback
+to the CPU), and scaling, color conversion and JPEG/PNG encoding run in parallel worker threads.
+
+| Video (1080p HEVC, 45 Mbps) | Length | CPU decoding | GPU decoding (NVDEC) |
+|---|---|---|---|
+| Single chapter | 11.9 min | 187 s | **31 s** |
+| Two chapters combined | 14.5 min | | **42 s** |
+
+With NVDEC, conversion runs at about 20x real time: one hour of video takes about 3 minutes. Measured
+on an Intel Core Ultra 7 155H with an NVIDIA RTX 500 Ada.
 
 ## Output
 
@@ -50,14 +66,33 @@ Build an image from the repository root:
 docker compose build jazzy
 ```
 
-Run a conversion:
+Run a conversion (ROS 2):
 
 ```bash
-docker compose run --rm jazzy ros2 launch gopro_ros2 gopro_to_rosbag.launch.py gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
+docker compose run --rm jazzy ros2 launch gopro_ros gopro_to_rosbag.launch.py gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
+```
+
+or with ROS 1:
+
+```bash
+docker compose run --rm noetic roslaunch gopro_ros gopro_to_rosbag.launch gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run.bag
 ```
 
 Run `docker compose run --rm jazzy` without a command for an interactive shell. For
 `display_images:=true`, allow X11 access on the host first with `xhost +local:docker`.
+
+### GPU decoding in Docker
+
+With an NVIDIA GPU and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html),
+add [`docker-compose.nvidia.yml`](docker-compose.nvidia.yml) to decode the video on the GPU, which
+is several times faster. Enable it once in `.env`:
+
+```bash
+echo "COMPOSE_FILE=docker-compose.yml:docker-compose.nvidia.yml" >> .env
+```
+
+Without it, the same images decode on the CPU. The log shows which decoder is used
+(`Using hardware video decoding (cuda)`).
 
 Containers run as root by default, so output files are owned by root. To keep your own user, add
 `--user $(id -u):$(id -g) -e HOME=/tmp` to `docker compose run`.
@@ -74,7 +109,7 @@ mkdir -p ~/gopro_ws/src && cd ~/gopro_ws/src
 git clone https://github.com/AutonomousFieldRoboticsLab/gopro_ros2.git
 cd ~/gopro_ws
 rosdep install --from-paths src --ignore-src -y
-colcon build --packages-select gopro_ros2
+colcon build --packages-select gopro_ros
 source install/setup.bash
 ```
 
@@ -88,6 +123,17 @@ rosdep install --from-paths src --ignore-src -y
 catkin_make
 source devel/setup.bash
 ```
+
+### Hardware decoding
+
+GPU decoding works with the FFmpeg packages from Ubuntu and needs no extra build step:
+
+- **NVIDIA (NVDEC):** the NVIDIA driver must be installed.
+- **Intel / AMD (VAAPI):** a VA-API driver must be installed (`intel-media-va-driver` or
+  `mesa-va-drivers`).
+
+If neither is available, decoding falls back to the CPU. Set `hardware_decoding:=false` to always
+decode on the CPU.
 
 ### CMake options
 
@@ -106,7 +152,7 @@ the same arguments.
 `rosbag` is the output **bag directory**. Choose the storage backend with `storage_id`:
 
 ```bash
-ros2 launch gopro_ros2 gopro_to_rosbag.launch.py \
+ros2 launch gopro_ros gopro_to_rosbag.launch.py \
     gopro_video:=/path/to/GX010001.MP4 \
     rosbag:=/path/to/output/gopro_run \
     storage_id:=.mcap \
@@ -121,7 +167,7 @@ SQLite3. The output directory must not exist yet.
 `rosbag` is the output bag file (`.bag` is appended if missing):
 
 ```bash
-roslaunch gopro_ros2 gopro_to_rosbag.launch \
+roslaunch gopro_ros gopro_to_rosbag.launch \
     gopro_video:=/path/to/GX010001.MP4 \
     rosbag:=/path/to/output/gopro_run.bag
 ```
@@ -129,12 +175,12 @@ roslaunch gopro_ros2 gopro_to_rosbag.launch \
 ## EuRoC / ASL format
 
 ```bash
-ros2 launch gopro_ros2 gopro_to_asl.launch.py \
+ros2 launch gopro_ros gopro_to_asl.launch.py \
     gopro_video:=/path/to/GX010001.MP4 \
     asl_dir:=/path/to/output/asl
 ```
 
-On ROS 1, use `roslaunch gopro_ros2 gopro_to_asl.launch` with the same arguments.
+On ROS 1, use `roslaunch gopro_ros gopro_to_asl.launch` with the same arguments.
 
 ## Chaptered recordings
 
@@ -143,14 +189,15 @@ chapters of one recording into a single output, put them in a folder and pass it
 `multiple_files:=true`:
 
 ```bash
-ros2 launch gopro_ros2 gopro_to_rosbag.launch.py \
+ros2 launch gopro_ros gopro_to_rosbag.launch.py \
     gopro_folder:=/path/to/chapters \
     multiple_files:=true \
     rosbag:=/path/to/output/gopro_run
 ```
 
 All `.MP4` files in the folder are processed in name order, so the folder should contain the
-chapters of **one** recording only.
+chapters of **one** recording only. Images and IMU data continue across chapter boundaries without
+gaps.
 
 ## Parameters
 
@@ -167,13 +214,15 @@ chapters of **one** recording only.
 | `compressed_image_format` | `true` | Write JPEG `CompressedImage` instead of raw `Image` |
 | `grayscale` | `false` (`true` for ASL) | Convert images to grayscale |
 | `display_images` | `false` | Show images while processing |
+| `hardware_decoding` | `true` | Decode on the GPU (NVIDIA NVDEC, then VAAPI) if available, otherwise on the CPU |
 
 # Repository layout
 
 ```
 src/
   core/        GPMF (IMU, timing) and video extraction, ROS-agnostic
-  utils/       Time, bag and progress helpers, measurement types, logging; ROS-agnostic
+  utils/       Time, bag and progress helpers, measurement types, logging, thread pool;
+               ROS-agnostic
   ros/         ROS 1 and ROS 2 bag writers with the same interface
   gpmf/        Vendored gpmf-parser (GoPro)
   date/        Vendored date library (Howard Hinnant)
@@ -181,7 +230,10 @@ src/
 cmake/         ROS1.cmake, ROS2.cmake and Findffmpeg.cmake
 launch/        ROS 1 (.launch) and ROS 2 (.launch.py) launch files
 docker/        Dockerfiles for Noetic, Humble and Jazzy
+.github/       CI workflows (build + validation test in each Docker image)
 scripts/       Legacy ROS 1 helper scripts
+docker-compose.yml          One service per distro
+docker-compose.nvidia.yml   Optional GPU access for hardware decoding
 ```
 
 Code is formatted with the repository's `.clang-format`:
@@ -204,9 +256,6 @@ If you find the code useful in your research, please cite our paper:
   doi         = {10.1109/ICRA46639.2022.9811695},
 }
 ```
-
-The original ROS 1 version of this package is
-[gopro_ros](https://github.com/AutonomousFieldRoboticsLab/gopro_ros).
 
 # License
 

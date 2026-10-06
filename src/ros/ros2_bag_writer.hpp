@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <opencv2/core.hpp>
 #include <rclcpp/serialization.hpp>
@@ -13,7 +14,7 @@
 
 #include "utils/measurements.hpp"
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 /**
  * @brief Writes GoPro images, IMU and magnetometer measurements into a ROS 2 bag.
@@ -31,12 +32,17 @@ public:
                 std::string storage_id = ".mcap",
                 std::string mcap_compression = "zstd_fast");
 
-  /// Writes a BGR8 or MONO8 image, optionally JPEG-compressed to `<topic>/compressed`.
+  /// Writes a raw BGR8 or MONO8 image.
   void writeImage(const std::string& topic,
                   const cv::Mat& image,
                   uint64_t stamp_ns,
-                  bool compress,
                   const std::string& frame_id = "gopro");
+
+  /// Writes an already JPEG-encoded image to `<topic>/compressed`.
+  void writeCompressedImage(const std::string& topic,
+                            const std::vector<uint8_t>& jpeg,
+                            uint64_t stamp_ns,
+                            const std::string& frame_id = "gopro");
 
   void writeImu(const std::string& topic,
                 const AcclMeasurement& accl,
@@ -56,4 +62,4 @@ private:
   rclcpp::Serialization<sensor_msgs::msg::MagneticField> mag_serializer_;
 };
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

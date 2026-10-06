@@ -1,21 +1,23 @@
-# gopro_ros2: one service per supported ROS distro.
+# gopro_ros: one service per supported ROS distro.
 #
 # Build an image:
 #   docker compose build jazzy                 # or: noetic, humble (no service name builds all)
 #
 # Convert a video (DATA_DIR is mounted at /gopro_ws/data, defaults to ./data):
 #   DATA_DIR=/path/to/videos docker compose run --rm jazzy \
-#     ros2 launch gopro_ros2 gopro_to_rosbag.launch.py \
+#     ros2 launch gopro_ros gopro_to_rosbag.launch.py \
 #       gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
 #
 #   DATA_DIR=/path/to/videos docker compose run --rm noetic \
-#     roslaunch gopro_ros2 gopro_to_rosbag.launch \
+#     roslaunch gopro_ros gopro_to_rosbag.launch \
 #       gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run.bag
 #
 # Interactive shell:
 #   docker compose run --rm jazzy
 #
 # For display_images:=true, allow X11 access on the host first: xhost +local:docker
+
+name: gopro_ros
 
 x-gopro-common: &gopro-common
   network_mode: host
@@ -37,18 +39,18 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile_ros1_20_04
-    image: gopro_ros2:noetic
+    image: gopro_ros:noetic
 
   humble:
     <<: *gopro-common
     build:
       context: .
       dockerfile: docker/Dockerfile_ros2_22_04
-    image: gopro_ros2:humble
+    image: gopro_ros:humble
 
   jazzy:
     <<: *gopro-common
     build:
       context: .
       dockerfile: docker/Dockerfile_ros2_24_04
-    image: gopro_ros2:jazzy
+    image: gopro_ros:jazzy

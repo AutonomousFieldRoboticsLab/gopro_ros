@@ -30,12 +30,12 @@
 
 namespace fs = std::filesystem;
 
-using gopro_ros2::AcclMeasurement;
-using gopro_ros2::GoProImuExtractor;
-using gopro_ros2::GoProVideoExtractor;
-using gopro_ros2::GyroMeasurement;
-using gopro_ros2::MagMeasurement;
-using gopro_ros2::Timestamp;
+using gopro_ros::AcclMeasurement;
+using gopro_ros::GoProImuExtractor;
+using gopro_ros::GoProVideoExtractor;
+using gopro_ros::GyroMeasurement;
+using gopro_ros::MagMeasurement;
+using gopro_ros::Timestamp;
 
 namespace {
 
@@ -44,6 +44,14 @@ void shutdown() {
   ros::shutdown();
 #elif ROS_AVAILABLE == 2
   rclcpp::shutdown();
+#endif
+}
+
+bool rosOk() {
+#if ROS_AVAILABLE == 1
+  return ros::ok();
+#elif ROS_AVAILABLE == 2
+  return rclcpp::ok();
 #endif
 }
 
@@ -68,6 +76,7 @@ int main(int argc, char* argv[]) {
   bool grayscale;
   bool display_images;
   bool multiple_files;
+  bool hardware_decoding;
 
 #if ROS_AVAILABLE == 1
   ros::init(argc, argv, "gopro_to_rosbag");
@@ -80,6 +89,7 @@ int main(int argc, char* argv[]) {
   nh.param<bool>("grayscale", grayscale, false);
   nh.param<bool>("display_images", display_images, false);
   nh.param<bool>("multiple_files", multiple_files, false);
+  nh.param<bool>("hardware_decoding", hardware_decoding, true);
 #elif ROS_AVAILABLE == 2
   rclcpp::init(argc, argv);
   auto node = std::make_shared<rclcpp::Node>("gopro_to_rosbag");
@@ -93,6 +103,7 @@ int main(int argc, char* argv[]) {
   grayscale = node->declare_parameter<bool>("grayscale", false);
   display_images = node->declare_parameter<bool>("display_images", false);
   multiple_files = node->declare_parameter<bool>("multiple_files", false);
+  hardware_decoding = node->declare_parameter<bool>("hardware_decoding", true);
 #endif
 
   bool is_gopro_video = !gopro_video.empty();
@@ -111,9 +122,9 @@ int main(int argc, char* argv[]) {
   }
 
 #if ROS_AVAILABLE == 1
-  gopro_ros2::ROS1BagWriter bag_writer(rosbag);
+  gopro_ros::ROS1BagWriter bag_writer(rosbag);
 #elif ROS_AVAILABLE == 2
-  gopro_ros2::ROS2BagWriter bag_writer(rosbag, storage_id, mcap_compression);
+  gopro_ros::ROS2BagWriter bag_writer(rosbag, storage_id, mcap_compression);
 #endif
 
   std::vector<fs::path> video_files;
@@ -144,13 +155,14 @@ int main(int argc, char* argv[]) {
 
   // Read from each video chunk and write video to rosbag
   for (uint32_t i = 0; i < video_files.size(); i++) {
+    if (!rosOk()) break;  // Ctrl+C: skip the remaining chapters
     image_stamps.clear();
 
     PRINT_WARNING("Opening Video File: " << video_files[i].filename().string());
 
     fs::path file = video_files[i];
     GoProImuExtractor imu_extractor(file.string());
-    GoProVideoExtractor video_extractor(file.string(), scaling, true);
+    GoProVideoExtractor video_extractor(file.string(), scaling, true, hardware_decoding);
 
     if (i == 0 && imu_extractor.getNumOfSamples(STR2FOURCC("MAGN"))) {
       has_magnetic_field_readings = true;
@@ -188,7 +200,6 @@ int main(int argc, char* argv[]) {
     uint32_t ffmpeg_frame_count = video_extractor.getFrameCount();
     if (gpmf_frame_count != ffmpeg_frame_count) {
       PRINT_ERROR("Video and metadata frame count do not match");
-      shutdown();
     }
 
     uint64_t gpmf_video_time = imu_extractor.getVideoCreationTime();
@@ -196,20 +207,35 @@ int main(int argc, char* argv[]) {
 
     if (ffmpeg_video_time != gpmf_video_time) {
       PRINT_ERROR("Video creation time does not match");
-      shutdown();
     }
 
     imu_extractor.getImageStamps(image_stamps, video_end_stamp);
     if (i != video_files.size() - 1 && image_stamps.size() != ffmpeg_frame_count) {
       PRINT_ERROR("ffmpeg and gpmf frame count does not match. " << image_stamps.size() << " vs "
                                                                  << ffmpeg_frame_count);
-      shutdown();
     }
 
+    const auto encoding =
+        compress_images ? gopro_ros::ImageEncoding::kJpeg : gopro_ros::ImageEncoding::kNone;
     video_extractor.processFrames(
-        image_stamps, grayscale, display_images, [&](const cv::Mat& image, uint64_t stamp_ns) {
-          bag_writer.writeImage("/gopro/image_raw", image, stamp_ns, compress_images);
-        });
+        image_stamps,
+        grayscale,
+        display_images,
+        encoding,
+        [&](const auto& frame) {
+          if (compress_images) {
+            bag_writer.writeCompressedImage("/gopro/image_raw", frame.encoded, frame.stamp_ns);
+          } else {
+            bag_writer.writeImage("/gopro/image_raw", frame.image, frame.stamp_ns);
+          }
+        },
+        rosOk);
+  }
+
+  // Ctrl+C: stop without writing the remaining data
+  if (!rosOk()) {
+    PRINT_WARNING("Interrupted");
+    return 0;
   }
 
   // Write IMU data

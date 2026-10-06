@@ -20,6 +20,7 @@ VALUE_ARGS = [
     ("compressed_image_format", "true", "Write sensor_msgs/CompressedImage"),
     ("grayscale", "false", "Convert images to grayscale"),
     ("display_images", "false", "Show images while writing"),
+    ("hardware_decoding", "true", "Decode on the GPU (NVDEC/VAAPI) if available"),
 ]
 
 
@@ -35,7 +36,7 @@ def generate_launch_description():
     parameters.update({name: LaunchConfiguration(name) for name, _, _ in VALUE_ARGS})
 
     node = Node(
-        package="gopro_ros2",
+        package="gopro_ros",
         executable="gopro_to_rosbag",
         name="gopro_to_rosbag",
         output="screen",

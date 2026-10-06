@@ -7,13 +7,15 @@
   <arg name="scale" default="0.5"/>
   <arg name="grayscale" default="true"/>
   <arg name="display_images" default="false"/>
+  <arg name="hardware_decoding" default="true"/>
 
-  <node pkg="gopro_ros2" type="gopro_to_asl" name="gopro_to_asl" output="screen" required="true">
+  <node pkg="gopro_ros" type="gopro_to_asl" name="gopro_to_asl" output="screen" required="true">
     <param name="gopro_video" value="$(arg gopro_video)"/>
     <param name="asl_dir" value="$(arg asl_dir)"/>
     <param name="scale" value="$(arg scale)"/>
     <param name="grayscale" value="$(arg grayscale)"/>
     <param name="display_images" value="$(arg display_images)"/>
+    <param name="hardware_decoding" value="$(arg hardware_decoding)"/>
     <param name="gopro_folder" value="$(arg gopro_folder)"/>
     <param name="multiple_files" value="$(arg multiple_files)"/>
   </node>

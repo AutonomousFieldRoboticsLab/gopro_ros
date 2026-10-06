@@ -9,7 +9,7 @@
 
 #include <Eigen/Core>
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 // Inertial containers.
 using Timestamp = uint64_t;
@@ -69,4 +69,4 @@ struct GyroMeasurement {
   ImuGyro data;
 };
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

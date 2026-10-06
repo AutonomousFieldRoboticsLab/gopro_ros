@@ -9,7 +9,7 @@
 
 #include "date/date.h"
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 uint64_t parseIsoDate(const std::string& iso_date) {
   date::sys_time<std::chrono::nanoseconds> tp;
@@ -40,4 +40,4 @@ uint64_t getOffset1904() {
   return offset_secs;
 }
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

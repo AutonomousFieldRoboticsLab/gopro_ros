@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-namespace gopro_ros2 {
+namespace gopro_ros {
 
 namespace fs = std::filesystem;
 
@@ -29,4 +29,4 @@ BagConfig inferBagConfig(const std::string& bag_path, const std::string& storage
   return cfg;
 }
 
-}  // namespace gopro_ros2
+}  // namespace gopro_ros

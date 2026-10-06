@@ -1,0 +1,33 @@
+name: ROS 2 Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "ROS2 Ubuntu 22.04 (Humble)"
+            dockerfile: docker/Dockerfile_ros2_22_04
+            image: gopro_ros:humble
+          - name: "ROS2 Ubuntu 24.04 (Jazzy)"
+            dockerfile: docker/Dockerfile_ros2_24_04
+            image: gopro_ros:jazzy
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ matrix.image }} -f ${{ matrix.dockerfile }} .
+      - name: Echo Environment
+        run: |
+          docker run --rm ${{ matrix.image }} bash -c 'echo "ROS_DISTRO=${ROS_DISTRO} ROS_VERSION=${ROS_VERSION}"'
+      - name: Run Validation Test
+        run: |
+          docker run --rm -v "${GITHUB_WORKSPACE}/.github/scripts:/scripts:ro" ${{ matrix.image }} bash /scripts/validation_test.sh
