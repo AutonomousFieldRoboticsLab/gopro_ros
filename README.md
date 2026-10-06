@@ -52,9 +52,9 @@ The EuRoC exporter writes `mav0/cam0/data/<timestamp>.png`, `mav0/cam0/data.csv`
 
 ## Docker (recommended)
 
-[`docker-compose.yml`](docker-compose.yml) defines one service per distro: `noetic`, `humble` and
-`jazzy`. The folder in `DATA_DIR` is mounted at `/gopro_ws/data` (default: `./data`); you can set it
-once in a `.env` file next to `docker-compose.yml`:
+[`docker-compose.yml`](docker-compose.yml) defines one service per distro: `gopro_ros_noetic`,
+`gopro_ros_humble` and `gopro_ros_jazzy`. The folder in `DATA_DIR` is mounted at `/gopro_ws/data`
+(default: `./data`); you can set it once in a `.env` file next to `docker-compose.yml`:
 
 ```bash
 echo "DATA_DIR=/path/to/your/data" > .env
@@ -63,22 +63,22 @@ echo "DATA_DIR=/path/to/your/data" > .env
 Build an image from the repository root:
 
 ```bash
-docker compose build jazzy
+docker compose build gopro_ros_jazzy
 ```
 
 Run a conversion (ROS 2):
 
 ```bash
-docker compose run --rm jazzy ros2 launch gopro_ros gopro_to_rosbag.launch.py gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
+docker compose run --rm gopro_ros_jazzy ros2 launch gopro_ros gopro_to_rosbag.launch.py gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
 ```
 
 or with ROS 1:
 
 ```bash
-docker compose run --rm noetic roslaunch gopro_ros gopro_to_rosbag.launch gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run.bag
+docker compose run --rm gopro_ros_noetic roslaunch gopro_ros gopro_to_rosbag.launch gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run.bag
 ```
 
-Run `docker compose run --rm jazzy` without a command for an interactive shell. For
+Run `docker compose run --rm gopro_ros_jazzy` without a command for an interactive shell. For
 `display_images:=true`, allow X11 access on the host first with `xhost +local:docker`.
 
 ### GPU decoding in Docker

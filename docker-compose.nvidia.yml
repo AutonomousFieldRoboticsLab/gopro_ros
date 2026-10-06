@@ -1,7 +1,7 @@
 # NVIDIA GPU access for hardware video decoding (NVDEC). Requires the NVIDIA Container Toolkit.
 #
 # Use it together with docker-compose.yml:
-#   docker compose -f docker-compose.yml -f docker-compose.nvidia.yml run --rm jazzy ...
+#   docker compose -f docker-compose.yml -f docker-compose.nvidia.yml run --rm gopro_ros_jazzy ...
 # or once per machine, in .env:
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.nvidia.yml
 
@@ -12,9 +12,9 @@ x-nvidia: &nvidia
     - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
 
 services:
-  noetic:
+  gopro_ros_noetic:
     <<: *nvidia
-  humble:
+  gopro_ros_humble:
     <<: *nvidia
-  jazzy:
+  gopro_ros_jazzy:
     <<: *nvidia
