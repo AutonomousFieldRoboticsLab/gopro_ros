@@ -1,0 +1,31 @@
+# gopro_ros2 for ROS 2 Humble (Ubuntu 22.04).
+#
+# Build (from the repository root):
+#   docker build -f docker/Dockerfile_ros2_22_04 -t gopro_ros2:humble .
+#
+# Run (mount the folder that holds your videos at /gopro_ws/data):
+#   docker run --rm -it -v /path/to/videos:/gopro_ws/data gopro_ros2:humble \
+#     ros2 launch gopro_ros2 gopro_to_rosbag.launch.py \
+#       gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
+FROM ros:humble-ros-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /gopro_ws
+
+# Install dependencies from package.xml first, so this layer is cached across source changes
+COPY package.xml src/gopro_ros2/package.xml
+RUN . /opt/ros/$ROS_DISTRO/setup.sh \
+    && apt-get update \
+    && rosdep update --rosdistro $ROS_DISTRO \
+    && rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build the package
+COPY . src/gopro_ros2
+RUN . /opt/ros/$ROS_DISTRO/setup.sh \
+    && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN echo "source /gopro_ws/install/setup.bash" >> /root/.bashrc
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["bash"]

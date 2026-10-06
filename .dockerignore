@@ -1,0 +1,8 @@
+.git
+build/
+install/
+log/
+devel/
+**/__pycache__
+data/
+.env

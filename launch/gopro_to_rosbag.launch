@@ -1,0 +1,22 @@
+<!-- ROS 1 launch file. For ROS 2 use gopro_to_rosbag.launch.py -->
+<launch>
+  <arg name="gopro_video" default="/vid.mp4"/>
+  <arg name="gopro_folder" default="/vid_folder"/>
+  <arg name="multiple_files" default="false"/>
+  <arg name="rosbag" default="/path/to/bag"/>
+  <arg name="scale" default="0.5"/>
+  <arg name="compressed_image_format" default="true"/>
+  <arg name="grayscale" default="false"/>
+  <arg name="display_images" default="false"/>
+
+  <node pkg="gopro_ros2" type="gopro_to_rosbag" name="gopro_to_rosbag" output="screen" required="true">
+    <param name="gopro_video" value="$(arg gopro_video)"/>
+    <param name="rosbag" value="$(arg rosbag)"/>
+    <param name="scale" value="$(arg scale)"/>
+    <param name="compressed_image_format" value="$(arg compressed_image_format)"/>
+    <param name="grayscale" value="$(arg grayscale)"/>
+    <param name="display_images" value="$(arg display_images)"/>
+    <param name="gopro_folder" value="$(arg gopro_folder)"/>
+    <param name="multiple_files" value="$(arg multiple_files)"/>
+  </node>
+</launch>

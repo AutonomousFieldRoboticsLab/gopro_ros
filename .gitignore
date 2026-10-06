@@ -1,0 +1,4 @@
+# Default docker compose data folder
+data/
+# Machine-specific docker compose settings (e.g. DATA_DIR)
+.env

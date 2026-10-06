@@ -1,107 +1,69 @@
-cmake_minimum_required(VERSION 3.8) 
-project(gopro_ros2) 
+cmake_minimum_required(VERSION 3.10)
+project(gopro_ros2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib) 
-LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+# By default we build the ROS executables, but this can be disabled to build only the library
+option(ENABLE_ROS "Build the ROS executables (ROS 1 or ROS 2, whichever is found)" ON)
+option(BUILD_GOPRO_TO_ASL "Build gopro_to_asl executable" ON)
 
 # ===========================
-# Dependencies
+# Dependencies shared by all builds
 # ===========================
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(cv_bridge REQUIRED)
-find_package(rosbag2_cpp REQUIRED)
-find_package(ffmpeg REQUIRED)
-find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(ffmpeg REQUIRED)
 
 # ===========================
-# Build Common Library
+# ROS-agnostic core library
 # ===========================
-# Gather all .cpp and .c files in src/
-file(GLOB GOPRO_SRC_FILES "src/*.cpp" "src/*.c")
-add_library(${PROJECT_NAME}
-  ${GOPRO_SRC_FILES}
+set(CORE_LIBRARY_SOURCES
+  src/core/imu_extractor.cpp
+  src/core/video_extractor.cpp
+  src/utils/progress_bar.cpp
+  src/utils/rosbag_utils.cpp
+  src/utils/time_utils.cpp
+  # Vendored GPMF parser (https://github.com/gopro/gpmf-parser)
+  src/gpmf/GPMF_mp4reader.c
+  src/gpmf/GPMF_parser.c
+  src/gpmf/GPMF_print.cpp
+  src/gpmf/GPMF_utils.c
 )
 
-target_include_directories(${PROJECT_NAME} 
-  PUBLIC 
-    include
-    ${FFMPEG_INCLUDE_DIRS}
-    ${OpenCV_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIRS}
-)
-
-ament_target_dependencies(${PROJECT_NAME}
-  rclcpp
-  sensor_msgs
-  std_msgs
-  geometry_msgs
-  cv_bridge
-  rosbag2_cpp
-)
-
-target_link_libraries(${PROJECT_NAME}
-  ${FFMPEG_LIBRARIES}
-  ${OpenCV_LIBS}
-  stdc++fs
-)
-
-# ===========================
-# Executable
-# ===========================
-option(BUILD_GOPRO_TO_ASL "Build gopro_to_asl executable" OFF)
-
-if(BUILD_GOPRO_TO_ASL)
-  add_executable(gopro_to_asl gopro_to_asl.cpp)
-  ament_target_dependencies(gopro_to_asl 
-    rclcpp
-    sensor_msgs
-    std_msgs
-    geometry_msgs
-    cv_bridge
-    rosbag2_cpp
+# Called from ROS1.cmake / ROS2.cmake once the ROS package has been declared.
+# The library is internal to the executables, so it is always static (catkin otherwise defaults to
+# shared libraries, which would then also have to be installed).
+macro(gopro_add_core_library)
+  add_library(${PROJECT_NAME}_lib STATIC ${CORE_LIBRARY_SOURCES})
+  target_include_directories(${PROJECT_NAME}_lib
+    PUBLIC
+      src
+      ${FFMPEG_INCLUDE_DIRS}
+      ${OpenCV_INCLUDE_DIRS}
+      ${EIGEN3_INCLUDE_DIRS}
   )
-  target_link_libraries(gopro_to_asl 
-    ${PROJECT_NAME}
+  target_link_libraries(${PROJECT_NAME}_lib
+    ${FFMPEG_LIBRARIES}
+    ${OpenCV_LIBS}
   )
+endmacro()
 
-  install(TARGETS gopro_to_asl DESTINATION lib/${PROJECT_NAME})
+# ===========================
+# Find our ROS version
+# ===========================
+# NOTE: Default to ROS 1 if both are in the environment
+find_package(catkin QUIET COMPONENTS roscpp)
+find_package(ament_cmake QUIET)
+if(catkin_FOUND AND ENABLE_ROS)
+  message(STATUS "ROS *1* found, building ROS1.cmake")
+  include(${PROJECT_SOURCE_DIR}/cmake/ROS1.cmake)
+elseif(ament_cmake_FOUND AND ENABLE_ROS)
+  message(STATUS "ROS *2* found, building ROS2.cmake")
+  include(${PROJECT_SOURCE_DIR}/cmake/ROS2.cmake)
+else()
+  message(WARNING "No ROS found (or ENABLE_ROS=OFF): building only the core library")
+  gopro_add_core_library()
 endif()
-
-add_executable(gopro_to_rosbag gopro_to_rosbag.cpp)
-ament_target_dependencies(gopro_to_rosbag 
-  rclcpp
-  sensor_msgs
-  std_msgs
-  geometry_msgs
-  cv_bridge
-  rosbag2_cpp
-)
-target_link_libraries(gopro_to_rosbag 
-  ${PROJECT_NAME}
-)
-
-# ===========================
-# Install
-# ===========================
-install(TARGETS 
-  gopro_to_rosbag
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(DIRECTORY include/
-  DESTINATION include
-)
-
-install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}/
-)
-
-ament_package()

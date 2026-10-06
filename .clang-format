@@ -47,15 +47,25 @@ ForEachMacros:
   - foreach
   - Q_FOREACH
   - BOOST_FOREACH
+IncludeBlocks:   Regroup
 IncludeCategories:
-  - Regex:           '^<ext/.*\.h>'
-    Priority:        2
-  - Regex:           '^<.*\.h>'
+  # C system headers, e.g. <stdint.h>
+  - Regex:           '^<[a-z0-9_]+\.h>$'
     Priority:        1
-  - Regex:           '^<.*'
+    CaseSensitive:   true
+  # C++ standard library headers, e.g. <vector>
+  - Regex:           '^<[a-z_]+>$'
     Priority:        2
-  - Regex:           '.*'
+    CaseSensitive:   true
+  # Third-party libraries (ROS 2, OpenCV, Eigen, FFmpeg, ...)
+  - Regex:           '^<.*>$'
     Priority:        3
+  # Vendored third-party code in src/ (gpmf, date)
+  - Regex:           '^"(gpmf|date)/'
+    Priority:        4
+  # Project headers
+  - Regex:           '.*'
+    Priority:        5
 IndentCaseLabels: true
 IndentWidth:     2
 IndentWrappedFunctionNames: false
@@ -86,6 +96,6 @@ SpacesInContainerLiterals: true
 SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-Standard:        Auto
+Standard:        c++17
 TabWidth:        8
 UseTab:          Never

@@ -1,14 +1,200 @@
 # gopro_ros2
 
-This repository contains code for parsing GoPro telemetry metadata to obtain GoPro images with synchronized IMU measurements. The GoPro visual-inertial data can then be saved in [ros2 bag](http://wiki.ros.org/rosbag) or [EuRoC](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) format. Thus, effectively paving the way for visual-inertial odometry/SLAM for GoPro cameras.
+Extract time-synchronized images and IMU measurements from GoPro videos and save them as a
+**ROS 1 bag**, a **ROS 2 bag** (MCAP or SQLite3), or in the
+[EuRoC/ASL](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) format,
+ready for visual-inertial odometry and SLAM.
 
-This repository use [gpmf-parser](https://github.com/gopro/gpmf-parser)  from [GoPro](https://gopro.com) to extract metadata and timing information from GoPro cameras.
+Timing and IMU data are read from the GoPro GPMF telemetry track with GoPro's
+[gpmf-parser](https://github.com/gopro/gpmf-parser); images are decoded with FFmpeg and stamped on
+the same clock.
 
-## Related Paper
+## Supported platforms
+
+| ROS | Distro | Ubuntu | Docker image |
+|---|---|---|---|
+| ROS 1 | Noetic | 20.04 | `docker/Dockerfile_ros1_20_04` |
+| ROS 2 | Humble | 22.04 | `docker/Dockerfile_ros2_22_04` |
+| ROS 2 | Jazzy | 24.04 | `docker/Dockerfile_ros2_24_04` |
+
+The same package builds for both ROS versions: CMake detects whether catkin or ament is sourced and
+builds the matching executables (the approach used by [OpenVINS](https://github.com/rpng/open_vins)).
+
+## Output
+
+| Topic | Type | Frame | Notes |
+|---|---|---|---|
+| `/gopro/image_raw` | `sensor_msgs/Image` | `gopro` | `bgr8`, or `mono8` with `grayscale:=true` |
+| `/gopro/image_raw/compressed` | `sensor_msgs/CompressedImage` | `gopro` | JPEG, written instead of the above with `compressed_image_format:=true` |
+| `/gopro/imu` | `sensor_msgs/Imu` | `body` | Accelerometer + gyroscope |
+| `/gopro/magnetic_field` | `sensor_msgs/MagneticField` | `body` | Only if the camera records a magnetometer stream |
+
+The EuRoC exporter writes `mav0/cam0/data/<timestamp>.png`, `mav0/cam0/data.csv` and
+`mav0/imu0/data.csv` under `asl_dir`.
+
+# Installation
+
+## Docker (recommended)
+
+[`docker-compose.yml`](docker-compose.yml) defines one service per distro: `noetic`, `humble` and
+`jazzy`. The folder in `DATA_DIR` is mounted at `/gopro_ws/data` (default: `./data`); you can set it
+once in a `.env` file next to `docker-compose.yml`:
+
+```bash
+echo "DATA_DIR=/path/to/your/data" > .env
+```
+
+Build an image from the repository root:
+
+```bash
+docker compose build jazzy
+```
+
+Run a conversion:
+
+```bash
+docker compose run --rm jazzy ros2 launch gopro_ros2 gopro_to_rosbag.launch.py gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
+```
+
+Run `docker compose run --rm jazzy` without a command for an interactive shell. For
+`display_images:=true`, allow X11 access on the host first with `xhost +local:docker`.
+
+Containers run as root by default, so output files are owned by root. To keep your own user, add
+`--user $(id -u):$(id -g) -e HOME=/tmp` to `docker compose run`.
+
+## Build from source
+
+All dependencies (ROS packages, OpenCV, Eigen, FFmpeg headers) are declared in `package.xml` and
+installed by `rosdep`.
+
+### ROS 2 (Humble / Jazzy)
+
+```bash
+mkdir -p ~/gopro_ws/src && cd ~/gopro_ws/src
+git clone https://github.com/AutonomousFieldRoboticsLab/gopro_ros2.git
+cd ~/gopro_ws
+rosdep install --from-paths src --ignore-src -y
+colcon build --packages-select gopro_ros2
+source install/setup.bash
+```
+
+### ROS 1 (Noetic)
+
+```bash
+mkdir -p ~/gopro_ws/src && cd ~/gopro_ws/src
+git clone https://github.com/AutonomousFieldRoboticsLab/gopro_ros2.git
+cd ~/gopro_ws
+rosdep install --from-paths src --ignore-src -y
+catkin_make
+source devel/setup.bash
+```
+
+### CMake options
+
+| Option | Default | Description |
+|---|---|---|
+| `BUILD_GOPRO_TO_ASL` | `ON` | Build the EuRoC/ASL exporter |
+| `ENABLE_ROS` | `ON` | Build the ROS executables; when `OFF` (or no ROS is found), only the core library is built |
+
+# Usage
+
+Every executable has a ROS 2 launch file (`*.launch.py`) and a ROS 1 launch file (`*.launch`) with
+the same arguments.
+
+## ROS 2 bag
+
+`rosbag` is the output **bag directory**. Choose the storage backend with `storage_id`:
+
+```bash
+ros2 launch gopro_ros2 gopro_to_rosbag.launch.py \
+    gopro_video:=/path/to/GX010001.MP4 \
+    rosbag:=/path/to/output/gopro_run \
+    storage_id:=.mcap \
+    mcap_compression:=zstd_fast
+```
+
+This creates `gopro_run/` with `metadata.yaml` and `gopro_run_0.mcap`. Use `storage_id:=.db3` for
+SQLite3. The output directory must not exist yet.
+
+## ROS 1 bag
+
+`rosbag` is the output bag file (`.bag` is appended if missing):
+
+```bash
+roslaunch gopro_ros2 gopro_to_rosbag.launch \
+    gopro_video:=/path/to/GX010001.MP4 \
+    rosbag:=/path/to/output/gopro_run.bag
+```
+
+## EuRoC / ASL format
+
+```bash
+ros2 launch gopro_ros2 gopro_to_asl.launch.py \
+    gopro_video:=/path/to/GX010001.MP4 \
+    asl_dir:=/path/to/output/asl
+```
+
+On ROS 1, use `roslaunch gopro_ros2 gopro_to_asl.launch` with the same arguments.
+
+## Chaptered recordings
+
+GoPro splits long recordings into chapters (`GX010001.MP4`, `GX020001.MP4`, ...). To combine all
+chapters of one recording into a single output, put them in a folder and pass it with
+`multiple_files:=true`:
+
+```bash
+ros2 launch gopro_ros2 gopro_to_rosbag.launch.py \
+    gopro_folder:=/path/to/chapters \
+    multiple_files:=true \
+    rosbag:=/path/to/output/gopro_run
+```
+
+All `.MP4` files in the folder are processed in name order, so the folder should contain the
+chapters of **one** recording only.
+
+## Parameters
+
+| Parameter | Launch default | Description |
+|---|---|---|
+| `gopro_video` | | Input video file |
+| `gopro_folder` | | Folder with video chapters (used with `multiple_files:=true`) |
+| `multiple_files` | `false` | Process all chapters in `gopro_folder` into one output |
+| `rosbag` | | Output bag (`gopro_to_rosbag` only) |
+| `asl_dir` | | Output directory (`gopro_to_asl` only) |
+| `storage_id` | `.mcap` | ROS 2 only: `.mcap` or `.db3` |
+| `mcap_compression` | `zstd_fast` | ROS 2 only: `zstd_fast`, `zstd_small` or `none` |
+| `scale` | `0.5` | Image scaling factor |
+| `compressed_image_format` | `true` | Write JPEG `CompressedImage` instead of raw `Image` |
+| `grayscale` | `false` (`true` for ASL) | Convert images to grayscale |
+| `display_images` | `false` | Show images while processing |
+
+# Repository layout
+
+```
+src/
+  core/        GPMF (IMU, timing) and video extraction, ROS-agnostic
+  utils/       Time, bag and progress helpers, measurement types, logging; ROS-agnostic
+  ros/         ROS 1 and ROS 2 bag writers with the same interface
+  gpmf/        Vendored gpmf-parser (GoPro)
+  date/        Vendored date library (Howard Hinnant)
+  gopro_to_rosbag.cpp, gopro_to_asl.cpp
+cmake/         ROS1.cmake, ROS2.cmake and Findffmpeg.cmake
+launch/        ROS 1 (.launch) and ROS 2 (.launch.py) launch files
+docker/        Dockerfiles for Noetic, Humble and Jazzy
+scripts/       Legacy ROS 1 helper scripts
+```
+
+Code is formatted with the repository's `.clang-format`:
+
+```bash
+clang-format -i src/core/*.?pp src/utils/*.?pp src/ros/*.?pp src/*.cpp
+```
+
+# Citation
 
 If you find the code useful in your research, please cite our paper:
 
-```bash
+```bibtex
 @inproceedings{joshi_gopro_icra_2022,
   author      = {Bharat Joshi and Marios Xanthidis and Sharmin Rahman and Ioannis Rekleitis},
   title       = {High Definition, Inexpensive, Underwater Mapping},
@@ -16,133 +202,14 @@ If you find the code useful in your research, please cite our paper:
   year        = {2022},
   pages       = {1113-1121},
   doi         = {10.1109/ICRA46639.2022.9811695},
-  abbr        = {ICRA},
-  bibtex_show = {true},
-  code        = {https://github.com/AutonomousFieldRoboticsLab/gopro_ros},
 }
 ```
 
-# Installation
+The original ROS 1 version of this package is
+[gopro_ros](https://github.com/AutonomousFieldRoboticsLab/gopro_ros).
 
-Tested on Ubuntu 24.04 (ROS2-Jazzy).
+# License
 
-## Prerequisites
-
-- ros-jazzy-desktop-full
-- [OpenCV](https://github.com/opencv/opencv) >= 4.6
-- [FFmpeg](http://ffmpeg.org/) >= 6.1.1
-- [Eigen3](http://eigen.tuxfamily.org/index.php?title=Main_Page)
-
-Building from source requires the FFmpeg development headers in addition to the
-`ffmpeg` executable.
-
-## Install Dependencies
-
-- First install ROS2 using [this guide](https://docs.ros.org/en/jazzy/Installation.html).
-
-```bash
-# First update package list
-sudo apt-get update
-
-# ROS 2 dependencies
-sudo apt-get install -y \
-    ros-$ROS_DISTRO-ament-cmake \
-    ros-$ROS_DISTRO-rclcpp \
-    ros-$ROS_DISTRO-std-msgs \
-    ros-$ROS_DISTRO-geometry-msgs \
-    ros-$ROS_DISTRO-sensor-msgs \
-    ros-$ROS_DISTRO-cv-bridge \
-    ros-$ROS_DISTRO-rosbag2-cpp \
-    ros-$ROS_DISTRO-rosbag2-storage-default-plugins \
-    ros-$ROS_DISTRO-ros2launch
-
-# System libraries and development headers
-sudo apt-get install -y \
-    libeigen3-dev \
-    libopencv-dev \
-    libavcodec-dev \
-    libavdevice-dev \
-    libavfilter-dev \
-    libavformat-dev \
-    libavutil-dev \
-    libpostproc-dev \
-    libswresample-dev \
-    libswscale-dev \
-    ffmpeg
-```
-
-## Install gopro_ros2
-
-Before proceeding, ensure all dependencies are installed. To install gopro_ros2 (currently save to bag file only):
-
-```bash
-mkdir -p ~/gopro_ros2_ws/src
-cd gopro_ros2_ws/src
-git clone https://github.com/AutonomousFieldRoboticsLab/gopro_ros2.git
-cd ~/gopro_ros2_ws
-colcon build --packages-select gopro_ros2 --symlink-install --cmake-args -DBUILD_GOPRO_TO_ASL=OFF
-source ~/gopro_ros2_ws/install/setup.bash # Or add this to ~/.bashrc to make it permanent
-```
-
-# Usage
-
-GoPro splits video into smaller chunks. By splitting up the video it reduces the chance of you losing all your footage if the file gets corrupted somehow. It’s called chaptering, and the idea is that if one chapter gets corrupted the others should still be okay because they’re separate files.
-
-## Save to ROS2 bag
-
-Both MCAP and SQLite3 storage backends are supported. The `rosbag` argument is
-the output **bag directory**, not an output filename. Select the backend
-explicitly with `storage_id:=.mcap` (the default) or `storage_id:=.db3`. 
-<!-- A `.mcap` or `.db3` suffix supplied in `rosbag` is stripped and does not select -->
-<!-- the backend. -->
-
-For example, write an MCAP bag with the default fast Zstandard compression:
-
-```bash
-ros2 launch gopro_ros2 gopro_to_rosbag.xml \
-    gopro_video:=/path/to/GX010001.MP4 \
-    rosbag:=/path/to/output/gopro_run \
-    storage_id:=.mcap \
-    mcap_compression:=zstd_fast
-```
-
-This creates the rosbag2 directory `gopro_run/`, containing `metadata.yaml` and
-the generated `.mcap` storage file.
-
-The supported MCAP compression profiles are `zstd_fast` (default),
-`zstd_small`, and `none`. To write a SQLite3 bag instead:
-
-```bash
-ros2 launch gopro_ros2 gopro_to_rosbag.xml \
-    gopro_video:=/path/to/GX010001.MP4 \
-    rosbag:=/path/to/output/gopro_run \
-    storage_id:=.db3
-```
-
-If you have multiple files from a single session, put all videos in same folder you can use the following command to concatenate into a single rosbag:
-
-```bash
-ros2 launch gopro_ros2 gopro_to_rosbag.xml \
-    gopro_folder:=/path/to/gopro_video_files \
-    multiple_files:=true \
-    rosbag:=/path/to/output/gopro_run \
-    storage_id:=.mcap
-```
-
-## Save to EuRoC format
-
-To save GoPro video with IMU measurements in Euroc format:
-
-```bash
-ros2 launch gopro_ros2 gopro_to_asl.xml gopro_video:=<gopro_video_file> asl_dir:=<asl_format_dir>
-```
-
-If you have multiple files from a single session, put all videos in same folder you can use the following command extract all videos in a single folder:
-
-```bash
-ros2 launch gopro_ros2 gopro_to_asl.xml gopro_folder:=<folder_with_gopro_video_files> multiple_files:=true asl_dir:=<asl_format_dir>
-```
-
-# TODO
-
-Enable save into EuRoC format.
+BSD 3-Clause, see [LICENSE](LICENSE). The vendored
+[gpmf-parser](https://github.com/gopro/gpmf-parser) (`src/gpmf/`) is Apache-2.0 / MIT and the
+[date](https://github.com/HowardHinnant/date) library (`src/date/`) is MIT.
