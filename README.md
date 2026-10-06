@@ -28,10 +28,10 @@ builds the matching executables (the approach used by [OpenVINS](https://github.
 Video frames are decoded on the GPU when available (NVIDIA NVDEC or VAAPI, with automatic fallback
 to the CPU), and scaling, color conversion and JPEG/PNG encoding run in parallel worker threads.
 
-| Video (1080p HEVC, 45 Mbps) | Length | CPU decoding | GPU decoding (NVDEC) |
+| Video (1080p HEVC, 45 Mbps) | Before | New (CPU) | New (GPU, NVDEC) |
 |---|---|---|---|
-| Single chapter | 11.9 min | 187 s | **31 s** |
-| Two chapters combined | 14.5 min | | **42 s** |
+| 11.9 min | 201 s | 187 s | 31 s |
+| 14.5 min, 2 chapters | 246 s | 226 s | 42 s |
 
 With NVDEC, conversion runs at about 20x real time: one hour of video takes about 3 minutes. Measured
 on an Intel Core Ultra 7 155H with an NVIDIA RTX 500 Ada.
