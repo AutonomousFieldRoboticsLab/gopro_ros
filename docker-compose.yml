@@ -39,18 +39,18 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile_ros1_20_04
-    image: gopro_ros:noetic
+    image: afrl/gopro_ros:noetic
 
   gopro_ros_humble:
     <<: *gopro-common
     build:
       context: .
       dockerfile: docker/Dockerfile_ros2_22_04
-    image: gopro_ros:humble
+    image: afrl/gopro_ros:humble
 
   gopro_ros_jazzy:
     <<: *gopro-common
     build:
       context: .
       dockerfile: docker/Dockerfile_ros2_24_04
-    image: gopro_ros:jazzy
+    image: afrl/gopro_ros:jazzy
