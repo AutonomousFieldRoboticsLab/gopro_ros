@@ -14,10 +14,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Build Docker Image
         run: |
-          docker build -t gopro_ros:noetic -f docker/Dockerfile_ros1_20_04 .
+          docker build -t afrl/gopro_ros:noetic -f docker/Dockerfile_ros1_20_04 .
       - name: Echo Environment
         run: |
-          docker run --rm gopro_ros:noetic bash -c 'echo "ROS_DISTRO=${ROS_DISTRO} ROS_VERSION=${ROS_VERSION}"'
+          docker run --rm afrl/gopro_ros:noetic bash -c 'echo "ROS_DISTRO=${ROS_DISTRO} ROS_VERSION=${ROS_VERSION}"'
       - name: Run Validation Test
         run: |
-          docker run --rm -v "${GITHUB_WORKSPACE}/.github/scripts:/scripts:ro" gopro_ros:noetic bash /scripts/validation_test.sh
+          docker run --rm -v "${GITHUB_WORKSPACE}/.github/scripts:/scripts:ro" afrl/gopro_ros:noetic bash /scripts/validation_test.sh

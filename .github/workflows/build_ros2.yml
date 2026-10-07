@@ -15,10 +15,10 @@ jobs:
         include:
           - name: "ROS2 Ubuntu 22.04 (Humble)"
             dockerfile: docker/Dockerfile_ros2_22_04
-            image: gopro_ros:humble
+            image: afrl/gopro_ros:humble
           - name: "ROS2 Ubuntu 24.04 (Jazzy)"
             dockerfile: docker/Dockerfile_ros2_24_04
-            image: gopro_ros:jazzy
+            image: afrl/gopro_ros:jazzy
     steps:
       - name: Code Checkout
         uses: actions/checkout@v4

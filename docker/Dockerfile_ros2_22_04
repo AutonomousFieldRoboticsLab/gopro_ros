@@ -1,10 +1,10 @@
 # gopro_ros for ROS 2 Humble (Ubuntu 22.04).
 #
 # Build (from the repository root):
-#   docker build -f docker/Dockerfile_ros2_22_04 -t gopro_ros:humble .
+#   docker build -f docker/Dockerfile_ros2_22_04 -t afrl/gopro_ros:humble .
 #
 # Run (mount the folder that holds your videos at /gopro_ws/data):
-#   docker run --rm -it -v /path/to/videos:/gopro_ws/data gopro_ros:humble \
+#   docker run --rm -it -v /path/to/videos:/gopro_ws/data afrl/gopro_ros:humble \
 #     ros2 launch gopro_ros gopro_to_rosbag.launch.py \
 #       gopro_video:=/gopro_ws/data/GX010001.MP4 rosbag:=/gopro_ws/data/gopro_run
 FROM ros:humble-ros-base
